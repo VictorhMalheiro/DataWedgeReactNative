@@ -3,19 +3,47 @@
  * https://github.com/facebook/react-native
  *
  * @format
- * @flow
  */
 
-import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert, CheckBox, Button} from 'react-native';
+import React, {Component, useState, useEffect, useRef, useReducer} from 'react';
+import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert, CheckBox, Button, NativeEventEmitter} from 'react-native';
 import { DeviceEventEmitter } from 'react-native';
 import DataWedgeIntents from 'react-native-datawedge-intents';
 
 type Props = {
 };
 
+type ScanData = 
+{
+  data: any, decoder: any, timeAtDecode: any 
+};
 type ScanState = {
-  ean8checked: boolean,
+
+};
+
+
+
+export default function App()  {
+
+  let sendCommandResult: string;
+  let broadcastReceiverHandler: any = useRef(null);
+
+  const [ean8checked, setean8checked] = useState(true);
+  const [ean13checked, setean13checked] = useState(true);
+  const [code39checked, setcode39checked] = useState(true);
+  const [code128checked, setcode128checked] = useState(true);
+  const [lastApiVisible, setlastApiVisible] = useState(false);
+  const [lastApiText, setlastApiText] = useState("Messages from DataWaedge will go here");
+  const [enumeratedScannersText, setenumeratedScannersText] = useState("Requires DataWedge 6.3+");
+  const [checkBoxesDisabled, setcheckBoxesDisabled] = useState(true);
+  const [scanButtonVisible, setscanButtonVisible] = useState(false);
+  const [dwVersionText, setdwVersionText] = useState("Pre 6.3.  Please create and configure profile manually.  See the ReadMe for more details");
+  const [dwVersionTextStyle, setdwVersionTextStyle] = useState(styles.itemTextAttention);
+  const [activeProfileText, setActiveProfileText] = useState("Requires DataWedge 6.3+");
+  const [scans, setscans] = useState(Array());
+
+/*
+
   ean13checked: boolean,
   code39checked: boolean,
   code128checked: boolean,
@@ -28,90 +56,48 @@ type ScanState = {
   activeProfileText: string,
   enumeratedScannersText: string,
   scans: ScanData[],
-};
-type ScanData = 
-{
-  data: any, decoder: any, timeAtDecode: any 
-};
-export default class App extends Component<Props, ScanState> {
 
-  sendCommandResult: string;
-  broadcastReceiverHandler: any;
-
-  constructor(Props: any) 
+  let [scanState, dispatch] = useReducer(reducer,
   {
-    super(Props)
-    this.state = {
       ean8checked: true,
       ean13checked: true, 
       code39checked: true, 
       code128checked: true, 
       lastApiVisible: false, 
-      lastApiText: "Messages from DataWedge will go here",
+      lastApiText:,
       checkBoxesDisabled: true, 
       scanButtonVisible: false, 
-      dwVersionText: "Pre 6.3.  Please create and configure profile manually.  See the ReadMe for more details",
-      dwVersionTextStyle: styles.itemTextAttention,
-      activeProfileText: "Requires DataWedge 6.3+",
+      dwVersionText: "asdf 6.3.  Please create and configure profile manually.  See the ReadMe for more details",
+      dwVersionTextStyle: ,
+      activeProfileText: ,
       enumeratedScannersText: "Requires DataWedge 6.3+",
-      scans: [],
-    };
-    //this.scans = [{decoder: 'label', timeAtDecode: 'time', data: '123'}, 
-    //  {decoder: 'label', timeAtDecode: 'time', data: '321'}, 
-    //  {decoder: 'label', timeAtDecode: 'time', data: '123'}]; 
-    this.sendCommandResult = "false";
-    this.broadcastReceiverHandler = (intent: any) =>
-    {
-      this.broadcastReceiver(intent);
+      scans: Array(),
     }
-    DeviceEventEmitter.addListener('datawedge_broadcast_intent', this.broadcastReceiverHandler);
-    this.registerBroadcastReceiver();
-    this.determineVersion();
-  }
+  );
 
-  _onPressScanButton()
+  
+function reducer(state:any, action:any) {
+  switch (action.type) {
+    case 'dw_text':
+      return {...state, dwVersionText: action.value };
+    case 'scan_button'
+    default:
+      throw new Error();
+  }
+}
+*/
+/*
+  const _onPressScanButton:any = () =>
   {
-    this.sendCommand("com.symbol.datawedge.api.SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
-  }
+    console.log("OnPressScanButton");
+    setScanState({...scanState, ean8checked: false});
 
-  determineVersion()
-  {
-    this.sendCommand("com.symbol.datawedge.api.GET_VERSION_INFO", "");
+    sendCommand("com.symbol.datawedge.api.SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
   }
+*/
 
-  setDecoders()
-  {
-    //  Set the new configuration
-    var profileConfig = {
-        "PROFILE_NAME": "ZebraReactNativeDemo",
-        "PROFILE_ENABLED": "true",
-        "CONFIG_MODE": "UPDATE",
-        "PLUGIN_CONFIG": {
-            "PLUGIN_NAME": "BARCODE",
-            "PARAM_LIST": {
-                //"current-device-id": this.selectedScannerId,
-                "scanner_selection": "auto",
-                "decoder_ean8": "" + this.state.ean8checked,
-                "decoder_ean13": "" + this.state.ean13checked,
-                "decoder_code128": "" + this.state.code128checked,
-                "decoder_code39": "" + this.state.code39checked
-            }
-        }
-    };
-    this.sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
-  }
 
-  sendCommand(extraName: string, extraValue: any) {
-    console.log("Sending Command: " + extraName + ", " + JSON.stringify(extraValue));
-    var broadcastExtras: any = {};
-    broadcastExtras[extraName] = extraValue;
-    broadcastExtras["SEND_RESULT"] = this.sendCommandResult;
-    DataWedgeIntents.sendBroadcastWithExtras({
-        action: "com.symbol.datawedge.api.ACTION",
-        extras: broadcastExtras});
-  }
-
-  registerBroadcastReceiver()
+  const registerBroadcastReceiver : any = () => 
   {
     DataWedgeIntents.registerBroadcastReceiver({
       filterActions: [
@@ -124,14 +110,14 @@ export default class App extends Component<Props, ScanState> {
     });
   }
 
-  broadcastReceiver(intent: any)
+  const broadcastReceiver:any = (intent: any) =>
   {
     //  Broadcast received
     console.log('Received Intent: ' + JSON.stringify(intent));
     if (intent.hasOwnProperty('RESULT_INFO')) {
         var commandResult = intent.RESULT + " (" +
             intent.COMMAND.substring(intent.COMMAND.lastIndexOf('.') + 1, intent.COMMAND.length) + ")";// + JSON.stringify(intent.RESULT_INFO);
-        this.commandReceived(commandResult.toLowerCase());
+        commandReceived(commandResult.toLowerCase());
     }
 
     if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_GET_VERSION_INFO')) {
@@ -143,61 +129,62 @@ export default class App extends Component<Props, ScanState> {
 
         //  Fire events sequentially so the application can gracefully degrade the functionality available on earlier DW versions
         if (datawedgeVersion >= "6.3")
-            this.datawedge63();
+            datawedge63();
         if (datawedgeVersion >= "6.4")
-            this.datawedge64();
+            datawedge64();
         if (datawedgeVersion >= "6.5")
-            this.datawedge65();
-
-        this.setState(this.state);
+            datawedge65();
+      
+        // this.setState(this.state);
     }
+    /*
     else if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS')) {
         //  Return from our request to enumerate the available scanners
         var enumeratedScannersObj = intent['com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS'];
-        this.enumerateScanners(enumeratedScannersObj);
+        enumerateScanners(enumeratedScannersObj);
     }
     else if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_GET_ACTIVE_PROFILE')) {
         //  Return from our request to obtain the active profile
         var activeProfileObj = intent['com.symbol.datawedge.api.RESULT_GET_ACTIVE_PROFILE'];
-        this.activeProfile(activeProfileObj);
+        activeProfile(activeProfileObj);
     }
     else if (!intent.hasOwnProperty('RESULT_INFO')) {
         //  A barcode has been scanned
-        this.barcodeScanned(intent, new Date().toLocaleString());
-    }
+        barcodeScanned(intent, new Date().toLocaleString());
+    }*/
   }
 
-  datawedge63()
+  const datawedge63:any = () =>
   {
     console.log("Datawedge 6.3 APIs are available");
     //  Create a profile for our application
-    this.sendCommand("com.symbol.datawedge.api.CREATE_PROFILE", "ZebraReactNativeDemo");
+    //sendCommand("com.symbol.datawedge.api.CREATE_PROFILE", "ZebraReactNativeDemo");
 
-    this.setState({...this.state, dwVersionText: "6.3.  Please configure profile manually.  See ReadMe for more details."});
+    setdwVersionText("6.3.  Please configure profile manually.  See ReadMe for more details.");
     
     //  Although we created the profile we can only configure it with DW 6.4.
-    this.sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
+    sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
 
     //  Enumerate the available scanners on the device
-    this.sendCommand("com.symbol.datawedge.api.ENUMERATE_SCANNERS", "");
+    sendCommand("com.symbol.datawedge.api.ENUMERATE_SCANNERS", "");
 
     //  Functionality of the scan button is available
-    this.setState({...this.state, scanButtonVisible: true});
+    setscanButtonVisible(true);
 
   }
 
-  datawedge64()
+  const datawedge64:any = () =>
   {
     console.log("Datawedge 6.4 APIs are available");
 
     //  Documentation states the ability to set a profile config is only available from DW 6.4.
     //  For our purposes, this includes setting the decoders and configuring the associated app / output params of the profile.
-    this.setState({...this.state, dwVersionText: "6.4."});
-    this.setState({...this.state, dwVersionTextStyle: styles.itemText});
+    setdwVersionText("6.4.");
+    //setScanState({...scanState, dwVersionTextStyle: styles.itemText});
     //document.getElementById('info_datawedgeVersion').classList.remove("attention");
 
     //  Decoders are now available
-    this.setState({...this.state, checkBoxesDisabled: false});
+    setcheckBoxesDisabled(false);
 
     //  Configure the created profile (associated app and keyboard plugin)
     var profileConfig = {
@@ -214,7 +201,7 @@ export default class App extends Component<Props, ScanState> {
             "ACTIVITY_LIST": ["*"]
         }]
     };
-    this.sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
+    sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
 
     //  Configure the created profile (intent plugin)
     var profileConfig2 = {
@@ -231,31 +218,31 @@ export default class App extends Component<Props, ScanState> {
             }
         }
     };
-    this.sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig2);
+    sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig2);
 
     //  Give some time for the profile to settle then query its value
     setTimeout(() => {
-        this.sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
+        sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
     }, 1000);
   }
 
-  datawedge65()
+  const datawedge65:any = () =>
   {
     console.log("Datawedge 6.5 APIs are available");
 
-    this.setState({...this.state, dwVersionText: "6.5 or higher."});
+    setdwVersionText("6.5 or higher.");
 
     //  Instruct the API to send 
-    this.sendCommandResult = "true";
-    this.setState({...this.state, lastApiVisible: true});
+    sendCommandResult = "true";
+    setlastApiVisible(true);
   }
-
-  commandReceived(commandText: any)
+  const commandReceived:any = (commandText: any) =>
   {
-    this.setState({...this.state, lastApiText: commandText});
+    setlastApiText(commandText);
   }
+/*
   // TODO: enumeratedScanners should be a data type.
-  enumerateScanners(enumeratedScanners: any)
+  const enumerateScanners:any = (enumeratedScanners: any) =>
   {
     var humanReadableScannerList = "";
     for (var i = 0; i < enumeratedScanners.length; i++)
@@ -265,95 +252,163 @@ export default class App extends Component<Props, ScanState> {
         if (i < enumeratedScanners.length - 1)
             humanReadableScannerList += ", ";
     }
-    this.setState({...this.state, enumeratedScannersText: humanReadableScannerList});
+    setScanState({...scanState, enumeratedScannersText: humanReadableScannerList});
   }
 
-  activeProfile(theActiveProfile: string)
+  const activeProfile:any = (theActiveProfile: string) =>
   {
-    this.setState({...this.state, activeProfileText: theActiveProfile});
+    setScanState({...scanState, activeProfileText: theActiveProfile});
   }
 
-  barcodeScanned(scanData: any, timeOfScan: any)
+  const barcodeScanned:any = (scanData: any, timeOfScan: any) =>
   {
     var scannedData = scanData["com.symbol.datawedge.data_string"];
     var scannedType = scanData["com.symbol.datawedge.label_type"];
     console.log("Scan: " + scannedData);
-    console.log(this.state.scans);
-    var scanArray = this.state.scans;
+    console.log(scanState.scans);
+    var scanArray = scanState.scans;
     scanArray.unshift({ data: scannedData, decoder: scannedType, timeAtDecode: timeOfScan });
-    this.setState({...this.state, scans: scanArray});
+    setScanState({...scanState, scans: scanArray});
+  }
+  */
+
+
+const setDecoders = () => {
+  //  Set the new configuration
+  var profileConfig = {
+      "PROFILE_NAME": "ZebraReactNativeDemo",
+      "PROFILE_ENABLED": "true",
+      "CONFIG_MODE": "UPDATE",
+      "PLUGIN_CONFIG": {
+          "PLUGIN_NAME": "BARCODE",
+          "PARAM_LIST": {
+              //"current-device-id": this.selectedScannerId,
+              "scanner_selection": "auto",
+              "decoder_ean8": "" + ean8checked,
+              "decoder_ean13": "" + ean13checked,
+              "decoder_code128": "" + code128checked,
+              "decoder_code39": "" + code39checked
+          }
+      }
+  };
+  sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
+}
+const sendCommand:any = (extraName: string, extraValue: any): any => {
+  console.log("Sending Command: " + extraName + ", " + JSON.stringify(extraValue));
+  var broadcastExtras: any = {};
+  broadcastExtras[extraName] = extraValue;
+  broadcastExtras["SEND_RESULT"] = sendCommandResult;
+  DataWedgeIntents.sendBroadcastWithExtras({
+      action: "com.symbol.datawedge.api.ACTION",
+      extras: broadcastExtras});
+}
+
+  const determineVersion:any = () => 
+  {
+    console.log("Determine Version");
+    sendCommand("com.symbol.datawedge.api.GET_VERSION_INFO", "");
   }
 
-  render() {
+
+  sendCommandResult = "false";
+
+  const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
+
+  const intentHandler = useEffect(() => 
+  {
+    eventEmitter.addListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
+    return (() => {
+      eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
+    })
+  }, ["hot"]);
+
+  if (broadcastReceiverHandler.current == null)
+  {
+    broadcastReceiverHandler.current = (intent:any) =>
+    {
+      broadcastReceiver(intent);
+    }
+    registerBroadcastReceiver();
+  }
+
+  const hasCurrentVersion = useRef(false);
+  if (hasCurrentVersion.current == false)
+  {
+    determineVersion();
+    hasCurrentVersion.current = true;
+  }
+  
+  
+    
     return (
       <ScrollView>
       <View style={styles.container}>
         <Text style={styles.h1}>Zebra ReactNative DataWedge Demo</Text>
         <Text style={styles.h3}>Information / Configuration</Text>
         <Text style={styles.itemHeading}>DataWedge version:</Text>
-        <Text style={this.state.dwVersionTextStyle}>{this.state.dwVersionText}</Text>
+        <Text style={dwVersionTextStyle}>{dwVersionText}</Text>
         <Text style={styles.itemHeading}>Active Profile</Text>
-        <Text style={styles.itemText}>{this.state.activeProfileText}</Text>
-        { this.state.lastApiVisible && 
+        <Text style={styles.itemText}>{activeProfileText}</Text>
+        { lastApiVisible && 
           <Text style={styles.itemHeading}>Last API message</Text>
         }
-        { this.state.lastApiVisible && 
-          <Text style={styles.itemText}>{this.state.lastApiText}</Text>
+        { lastApiVisible && 
+          <Text style={styles.itemText}>{lastApiText}</Text>
         }
         <Text style={styles.itemHeading}>Available scanners:</Text>
-        <Text style={styles.itemText}>{this.state.enumeratedScannersText}</Text>
+        <Text style={styles.itemText}>{enumeratedScannersText}</Text>
         <View style={{flexDirection: 'row', flex: 1, alignItems:'center', alignContent: "space-around", justifyContent: "space-evenly"}}>
           <Text style={{alignContent: 'center', alignSelf: 'center', width: 70}}>EAN 8</Text>
           <CheckBox
-            value={this.state.ean8checked}
+            value={ean8checked}
             onValueChange={async (val) => {
-              await this.setState({...this.state, ean8checked: val});
-              this.setDecoders();
+              await setean8checked(val);
+              setDecoders();
             }}
           />
           <Text style={{alignContent: 'center', alignSelf: 'center', width: 70}}>EAN 13</Text>
           <CheckBox
-            value={this.state.ean13checked}
-            disabled={this.state.checkBoxesDisabled}
+            value={ean13checked}
+            disabled={checkBoxesDisabled}
             onValueChange={async (val) => {
-              await this.setState({...this.state, ean13checked: val});
-              this.setDecoders();
+              await setean13checked(val);
+              setDecoders();
             }}
           />
         </View>
         <View style={{flexDirection: 'row', flex: 1, alignItems:'center', alignContent: "space-around", justifyContent:'space-evenly'}}>
           <Text style={{alignContent: 'center', alignSelf: 'center', width: 70}}>EAN 39</Text>
           <CheckBox
-            value={this.state.code39checked}
-            disabled={this.state.checkBoxesDisabled}
+            value={code39checked}
+            disabled={checkBoxesDisabled}
             onValueChange={async (val) => {
-              await this.setState({...this.state, code39checked: val});
-              this.setDecoders();
+              await setcode39checked(val);
+              setDecoders();
             }}
           />
           <Text style={{alignContent: 'center', alignSelf: 'center', width: 70}}>EAN 128</Text>
           <CheckBox
-            value={this.state.code128checked}
-            disabled={this.state.checkBoxesDisabled}
+            value={code128checked}
+            disabled={checkBoxesDisabled}
             onValueChange={async (val) => {
-              await this.setState({...this.state, code128checked: val});
-              this.setDecoders();
+              await setcode128checked(val);
+              setDecoders();
             }}
           />
         </View>
-        {this.state.scanButtonVisible && 
+        {scanButtonVisible && 
           <Button
           title='Scan'
           color="#333333"
-          onPress={() => {this._onPressScanButton()}}
+          onPress={() => {/*_onPressScanButton()*/}}
           />
         }
 
         <Text style={styles.itemHeading}>Scanned barcodes will be displayed here:</Text>
 
         <FlatList
-          data={this.state.scans}
-          extraData={this.state}
+          data={scans}
+          //extraData={scanState}
           keyExtractor={item => item.timeAtDecode}
           renderItem={({item, separators}) => (
             <TouchableHighlight
@@ -382,7 +437,6 @@ export default class App extends Component<Props, ScanState> {
     );
   }
 
-}
 
 const styles = StyleSheet.create({
   container: {
