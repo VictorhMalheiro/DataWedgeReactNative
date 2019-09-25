@@ -116,8 +116,7 @@ export default function App()  {
     //  For our purposes, this includes setting the decoders and configuring the associated app / output params of the profile.
     setdwVersionText("6.4.");
     setdwVersionTextStyle({...styles.itemText, backgroundColor: "white"});
-    //document.getElementById('info_datawedgeVersion').classList.remove("attention");
-
+    
     //  Decoders are now available
     setcheckBoxesDisabled(false);
 
@@ -205,14 +204,10 @@ export default function App()  {
     var scannedData = scanData["com.symbol.datawedge.data_string"];
     var scannedType = scanData["com.symbol.datawedge.label_type"];
     console.log("Scan: " + scannedData);
-    console.log(scans);
     var scanArray = scans;
     scanArray;
-    console.log("after");
-    console.log(scans);
     setscans(scans => prepend(scans, { data: scannedData, decoder: scannedType, timeAtDecode: timeOfScan }));
   }
-
 
 const setDecoders = () => {
   //  Set the new configuration
