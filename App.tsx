@@ -10,22 +10,8 @@ import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlig
 import { DeviceEventEmitter } from 'react-native';
 import DataWedgeIntents from 'react-native-datawedge-intents';
 
-type Props = {
-};
-
-type ScanData = 
-{
-  data: any, decoder: any, timeAtDecode: any 
-};
-type ScanState = {
-
-};
-
-
-
 export default function App()  {
 
-  let sendCommandResult: string;
   let broadcastReceiverHandler: any = useRef(null);
 
   const [ean8checked, setean8checked] = useState(true);
@@ -33,69 +19,21 @@ export default function App()  {
   const [code39checked, setcode39checked] = useState(true);
   const [code128checked, setcode128checked] = useState(true);
   const [lastApiVisible, setlastApiVisible] = useState(false);
-  const [lastApiText, setlastApiText] = useState("Messages from DataWaedge will go here");
+  const [lastApiText, setlastApiText] = useState("Messages from DataWedge will go here");
   const [enumeratedScannersText, setenumeratedScannersText] = useState("Requires DataWedge 6.3+");
   const [checkBoxesDisabled, setcheckBoxesDisabled] = useState(true);
   const [scanButtonVisible, setscanButtonVisible] = useState(false);
   const [dwVersionText, setdwVersionText] = useState("Pre 6.3.  Please create and configure profile manually.  See the ReadMe for more details");
   const [dwVersionTextStyle, setdwVersionTextStyle] = useState(styles.itemTextAttention);
-  const [activeProfileText, setActiveProfileText] = useState("Requires DataWedge 6.3+");
+  const [activeProfileText, setactiveProfileText] = useState("Requires DataWedge 6.3+");
   const [scans, setscans] = useState(Array());
+  const [sendCommandResult, setsendCommandResult] = useState("false");
 
-/*
-
-  ean13checked: boolean,
-  code39checked: boolean,
-  code128checked: boolean,
-  lastApiVisible: boolean,
-  lastApiText: string,
-  checkBoxesDisabled: boolean,
-  scanButtonVisible: boolean,
-  dwVersionText: string,
-  dwVersionTextStyle: any,
-  activeProfileText: string,
-  enumeratedScannersText: string,
-  scans: ScanData[],
-
-  let [scanState, dispatch] = useReducer(reducer,
-  {
-      ean8checked: true,
-      ean13checked: true, 
-      code39checked: true, 
-      code128checked: true, 
-      lastApiVisible: false, 
-      lastApiText:,
-      checkBoxesDisabled: true, 
-      scanButtonVisible: false, 
-      dwVersionText: "asdf 6.3.  Please create and configure profile manually.  See the ReadMe for more details",
-      dwVersionTextStyle: ,
-      activeProfileText: ,
-      enumeratedScannersText: "Requires DataWedge 6.3+",
-      scans: Array(),
-    }
-  );
-
-  
-function reducer(state:any, action:any) {
-  switch (action.type) {
-    case 'dw_text':
-      return {...state, dwVersionText: action.value };
-    case 'scan_button'
-    default:
-      throw new Error();
-  }
-}
-*/
-/*
   const _onPressScanButton:any = () =>
   {
     console.log("OnPressScanButton");
-    setScanState({...scanState, ean8checked: false});
-
     sendCommand("com.symbol.datawedge.api.SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
   }
-*/
-
 
   const registerBroadcastReceiver : any = () => 
   {
@@ -134,10 +72,7 @@ function reducer(state:any, action:any) {
             datawedge64();
         if (datawedgeVersion >= "6.5")
             datawedge65();
-      
-        // this.setState(this.state);
     }
-    /*
     else if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS')) {
         //  Return from our request to enumerate the available scanners
         var enumeratedScannersObj = intent['com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS'];
@@ -151,7 +86,7 @@ function reducer(state:any, action:any) {
     else if (!intent.hasOwnProperty('RESULT_INFO')) {
         //  A barcode has been scanned
         barcodeScanned(intent, new Date().toLocaleString());
-    }*/
+    }
   }
 
   const datawedge63:any = () =>
@@ -180,7 +115,7 @@ function reducer(state:any, action:any) {
     //  Documentation states the ability to set a profile config is only available from DW 6.4.
     //  For our purposes, this includes setting the decoders and configuring the associated app / output params of the profile.
     setdwVersionText("6.4.");
-    //setScanState({...scanState, dwVersionTextStyle: styles.itemText});
+    setdwVersionTextStyle({...styles.itemText, backgroundColor: "white"});
     //document.getElementById('info_datawedgeVersion').classList.remove("attention");
 
     //  Decoders are now available
@@ -233,14 +168,15 @@ function reducer(state:any, action:any) {
     setdwVersionText("6.5 or higher.");
 
     //  Instruct the API to send 
-    sendCommandResult = "true";
+    setsendCommandResult("true");
     setlastApiVisible(true);
   }
   const commandReceived:any = (commandText: any) =>
   {
+    console.log("Last api text set");
     setlastApiText(commandText);
   }
-/*
+
   // TODO: enumeratedScanners should be a data type.
   const enumerateScanners:any = (enumeratedScanners: any) =>
   {
@@ -252,25 +188,30 @@ function reducer(state:any, action:any) {
         if (i < enumeratedScanners.length - 1)
             humanReadableScannerList += ", ";
     }
-    setScanState({...scanState, enumeratedScannersText: humanReadableScannerList});
+    setenumeratedScannersText(humanReadableScannerList);
   }
 
   const activeProfile:any = (theActiveProfile: string) =>
   {
-    setScanState({...scanState, activeProfileText: theActiveProfile});
+    setactiveProfileText(theActiveProfile);
   }
-
+  const prepend = (array:any[], value:any) :any[] => {
+    var newArray = array.slice();
+    newArray.unshift(value);
+    return newArray;
+  }
   const barcodeScanned:any = (scanData: any, timeOfScan: any) =>
   {
     var scannedData = scanData["com.symbol.datawedge.data_string"];
     var scannedType = scanData["com.symbol.datawedge.label_type"];
     console.log("Scan: " + scannedData);
-    console.log(scanState.scans);
-    var scanArray = scanState.scans;
-    scanArray.unshift({ data: scannedData, decoder: scannedType, timeAtDecode: timeOfScan });
-    setScanState({...scanState, scans: scanArray});
+    console.log(scans);
+    var scanArray = scans;
+    scanArray;
+    console.log("after");
+    console.log(scans);
+    setscans(scans => prepend(scans, { data: scannedData, decoder: scannedType, timeAtDecode: timeOfScan }));
   }
-  */
 
 
 const setDecoders = () => {
@@ -309,9 +250,6 @@ const sendCommand:any = (extraName: string, extraValue: any): any => {
     sendCommand("com.symbol.datawedge.api.GET_VERSION_INFO", "");
   }
 
-
-  sendCommandResult = "false";
-
   const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
 
   const intentHandler = useEffect(() => 
@@ -331,15 +269,13 @@ const sendCommand:any = (extraName: string, extraValue: any): any => {
     registerBroadcastReceiver();
   }
 
-  const hasCurrentVersion = useRef(false);
-  if (hasCurrentVersion.current == false)
+  const [hasCurrentVersion, sethasCurrentVersion] = useState(false);
+  if (hasCurrentVersion == false)
   {
     determineVersion();
-    hasCurrentVersion.current = true;
+    sethasCurrentVersion(true);
   }
   
-  
-    
     return (
       <ScrollView>
       <View style={styles.container}>
@@ -400,15 +336,15 @@ const sendCommand:any = (extraName: string, extraValue: any): any => {
           <Button
           title='Scan'
           color="#333333"
-          onPress={() => {/*_onPressScanButton()*/}}
+          onPress={() => {_onPressScanButton()}}
           />
         }
 
-        <Text style={styles.itemHeading}>Scanned barcodes will be displayed here:</Text>
+        <Text style={styles.itemHeading}>Scanned barcodes will be displayed here.  Scanned barcodes: {scans.length}</Text>
 
         <FlatList
           data={scans}
-          //extraData={scanState}
+          extraData={scans}
           keyExtractor={item => item.timeAtDecode}
           renderItem={({item, separators}) => (
             <TouchableHighlight
