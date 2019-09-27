@@ -10,6 +10,55 @@ import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlig
 import { DeviceEventEmitter } from 'react-native';
 import DataWedgeIntents from 'react-native-datawedge-intents';
 
+
+type DataWedgeScanConfig = {
+  appNamespace: string,
+}
+type ScanAction = {
+  type: string,
+}
+
+export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
+{
+
+  const eventCoordinatorReducer:any = (state:ScanAction, action: ScanAction) => {
+    console.log("Event coordinator: ");
+    console.log(state);
+    console.log(action);
+    switch (action.type)
+    {
+      case "ToggleScan":
+        console.log("scan toggled")
+        sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
+        break;
+    }
+    return state;
+  }
+
+
+  const apiBase:string = "com.symbol.datawedge.api.";
+  //const [sendCommandResult, setsendCommandResult] = useState("false");
+  const [sendCommandResult, setsendCommandResult] = useState("true");
+  const initialState: ScanAction = {type: ""};
+  const toggleScanner = () => 
+  {
+      sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
+  }
+
+  const sendCommand:any = (extraName: string, extraValue: any): any => {
+    console.log("Sending Command from hook: " + extraName + ", " + JSON.stringify(extraValue));
+    var broadcastExtras: any = {};
+    broadcastExtras[extraName] = extraValue;
+    broadcastExtras["SEND_RESULT"] = sendCommandResult;
+    DataWedgeIntents.sendBroadcastWithExtras({
+        action: apiBase + "ACTION",
+        extras: broadcastExtras});
+  }
+
+  return useReducer(eventCoordinatorReducer, initialState);
+}
+
+
 export default function App()  {
 
   let broadcastReceiverHandler: any = useRef(null);
@@ -27,12 +76,17 @@ export default function App()  {
   const [dwVersionTextStyle, setdwVersionTextStyle] = useState(styles.itemTextAttention);
   const [activeProfileText, setactiveProfileText] = useState("Requires DataWedge 6.3+");
   const [scans, setscans] = useState(Array());
-  const [sendCommandResult, setsendCommandResult] = useState("false");
+  //const [sendCommandResult, setsendCommandResult] = useState("false");
+
+  const [currentData, dispatch] = useDataWedgeScanHandler({
+      appNamespace: "com.datawedgereactnative.demo"
+  });
+
 
   const _onPressScanButton:any = () =>
   {
     console.log("OnPressScanButton");
-    sendCommand("com.symbol.datawedge.api.SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
+    dispatch({ type: 'ToggleScan'});
   }
 
   const registerBroadcastReceiver : any = () => 
@@ -93,7 +147,7 @@ export default function App()  {
   {
     console.log("Datawedge 6.3 APIs are available");
     //  Create a profile for our application
-    //sendCommand("com.symbol.datawedge.api.CREATE_PROFILE", "ZebraReactNativeDemo");
+    sendCommand("com.symbol.datawedge.api.CREATE_PROFILE", "ZebraReactNativeDemo");
 
     setdwVersionText("6.3.  Please configure profile manually.  See ReadMe for more details.");
     
@@ -167,7 +221,8 @@ export default function App()  {
     setdwVersionText("6.5 or higher.");
 
     //  Instruct the API to send 
-    setsendCommandResult("true");
+    //TODO: uncomment 
+    //setsendCommandResult("true");
     setlastApiVisible(true);
   }
   const commandReceived:any = (commandText: any) =>
@@ -218,7 +273,6 @@ const setDecoders = () => {
       "PLUGIN_CONFIG": {
           "PLUGIN_NAME": "BARCODE",
           "PARAM_LIST": {
-              //"current-device-id": this.selectedScannerId,
               "scanner_selection": "auto",
               "decoder_ean8": "" + ean8checked,
               "decoder_ean13": "" + ean13checked,
@@ -233,7 +287,9 @@ const sendCommand:any = (extraName: string, extraValue: any): any => {
   console.log("Sending Command: " + extraName + ", " + JSON.stringify(extraValue));
   var broadcastExtras: any = {};
   broadcastExtras[extraName] = extraValue;
-  broadcastExtras["SEND_RESULT"] = sendCommandResult;
+  broadcastExtras["SEND_RESULT"] = "true";
+  // TODO: fix this command setting.
+  //broadcastExtras["SEND_RESULT"] = sendCommandResult;
   DataWedgeIntents.sendBroadcastWithExtras({
       action: "com.symbol.datawedge.api.ACTION",
       extras: broadcastExtras});
