@@ -9,6 +9,7 @@ import React, {Component, useState, useEffect, useRef, useReducer} from 'react';
 import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert, CheckBox, Button, NativeEventEmitter} from 'react-native';
 import { DeviceEventEmitter } from 'react-native';
 import DataWedgeIntents from 'react-native-datawedge-intents';
+import { useConsoleLogging } from './Logging';
 
 
 type DataWedgeScanConfig = {
@@ -20,23 +21,29 @@ type ScanAction = {
 
 export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
 {
+  // TOOD: use IoC to resolve the logging type we want to use.
+  const log = useConsoleLogging();
 
-  const eventCoordinatorReducer:any = (state:ScanAction, action: ScanAction) => {
-    console.log("Event coordinator: ");
-    console.log(state);
-    console.log(action);
+  const eventReducer:any = (state:ScanAction, action: ScanAction) => {
+    
+    // Some of these action types have side-effects, and are not a state reduction so in a production app
+    // it may be appropriate to extract these into a side-effect management platform like Redux Saga.
+    log({logLevel: 'debug', message: "DWReducer - Previous state: ", additionalParams: [state]});
+    log({logLevel: 'debug', message: "DWReducer - Action: ", additionalParams: [action]});
     switch (action.type)
     {
       case "ToggleScan":
-        console.log("scan toggled")
         sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
         break;
     }
+    log({logLevel: 'debug', message: "DWReducer - New state: ", additionalParams: [state]});
     return state;
   }
 
-
   const apiBase:string = "com.symbol.datawedge.api.";
+  const broadcastActionLabel:string = apiBase + "ACTION";
+
+
   //const [sendCommandResult, setsendCommandResult] = useState("false");
   const [sendCommandResult, setsendCommandResult] = useState("true");
   const initialState: ScanAction = {type: ""};
@@ -46,16 +53,16 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
   }
 
   const sendCommand:any = (extraName: string, extraValue: any): any => {
-    console.log("Sending Command from hook: " + extraName + ", " + JSON.stringify(extraValue));
+    log({logLevel: 'debug', message: "Sending Command from hook: " + extraName, additionalParams: extraValue});
     var broadcastExtras: any = {};
     broadcastExtras[extraName] = extraValue;
     broadcastExtras["SEND_RESULT"] = sendCommandResult;
     DataWedgeIntents.sendBroadcastWithExtras({
-        action: apiBase + "ACTION",
+        action: broadcastActionLabel,
         extras: broadcastExtras});
   }
 
-  return useReducer(eventCoordinatorReducer, initialState);
+  return useReducer(eventReducer, initialState);
 }
 
 
