@@ -1,19 +1,16 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
+import React from 'react';
 
-import React, {Component} from 'react';
-import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert} from 'react-native';
-import {CheckBox, Button} from 'react-native-elements'
-import { DeviceEventEmitter } from 'react-native';
-import DataWedgeIntents from 'react-native-datawedge-intents';
+const ScanContext = React.createContext({});
 
-type Props = {};
-export default class App extends Component<Props> {
+export const ScanProvider = ScanContext.Provider;
+export const ScanConsumer = ScanContext.Consumer;
+export default ScanContext;
+
+
+
+
+/*
+
   constructor(Props) 
   {
     super(Props)
@@ -261,161 +258,4 @@ export default class App extends Component<Props> {
     this.setState(this.state);
   }
 
-  render() {
-    return (
-      <ScrollView>
-      <View style={styles.container}>
-        <Text style={styles.h1}>Zebra ReactNative DataWedge Demo</Text>
-        <Text style={styles.h3}>Information / Configuration</Text>
-        <Text style={styles.itemHeading}>DataWedge version:</Text>
-        <Text style={this.state.dwVersionTextStyle}>{this.state.dwVersionText}</Text>
-        <Text style={styles.itemHeading}>Active Profile</Text>
-        <Text style={styles.itemText}>{this.state.activeProfileText}</Text>
-        { this.state.lastApiVisible && 
-          <Text style={styles.itemHeading}>Last API message</Text>
-        }
-        { this.state.lastApiVisible && 
-          <Text style={styles.itemText}>{this.state.lastApiText}</Text>
-        }
-        <Text style={styles.itemHeading}>Available scanners:</Text>
-        <Text style={styles.itemText}>{this.state.enumeratedScannersText}</Text>
-        <View style={{flexDirection: 'row', flex: 1}}>
-          <CheckBox
-            title='EAN 8'
-            checked={this.state.ean8checked}
-            disabled={this.state.checkBoxesDisabled}
-            onPress={() => {this.state.ean8checked = !this.state.ean8checked;this.setDecoders(); this.setState(this.state)}}
-          />
-          <CheckBox
-            title='EAN 13'
-            checked={this.state.ean13checked}
-            disabled={this.state.checkBoxesDisabled}
-            onPress={() => {this.state.ean13checked = !this.state.ean13checked;this.setDecoders(); this.setState(this.state)}}
-          />
-        </View>
-        <View style={{flexDirection: 'row', flex: 1}}>
-          <CheckBox
-            title='Code 39'
-            checked={this.state.code39checked}
-            disabled={this.state.checkBoxesDisabled}
-            onPress={() => {this.state.code39checked = !this.state.code39checked;this.setDecoders(); this.setState(this.state)}}
-          />
-          <CheckBox
-            title='Code 128'
-            checked={this.state.code128checked}
-            disabled={this.state.checkBoxesDisabled}
-            onPress={() => {this.state.code128checked = !this.state.code128checked;this.setDecoders(); this.setState(this.state)}}
-          />
-        </View>
-        {this.state.scanButtonVisible && 
-          <Button
-          title='Scan'
-          color="#333333"
-          buttonStyle={{
-            backgroundColor: "#ffd200",
-            height: 45,
-            borderColor: "transparent",
-            borderWidth: 0,
-            borderRadius: 5,
-          }}
-          onPress={() => {this._onPressScanButton()}}
-          />
-        }
-
-        <Text style={styles.itemHeading}>Scanned barcodes will be displayed here:</Text>
-
-        <FlatList
-          data={this.state.scans}
-          extraData={this.state}
-          keyExtractor={item => item.timeAtDecode}
-          renderItem={({item, separators}) => (
-            <TouchableHighlight
-            onShowUnderlay={separators.highlight}
-            onHideUnderlay={separators.unhighlight}>
-            <View style={{
-              backgroundColor: '#0077A0', 
-              margin:10,
-              borderRadius: 5,
-            }}>
-            <View style={{flexDirection: 'row', flex: 1}}>
-            <Text style={styles.scanDataHead}>{item.decoder}</Text>
-            <View style={{flex: 1}}>
-              <Text style={styles.scanDataHeadRight}>{item.timeAtDecode}</Text>
-            </View>
-            </View>
-            <Text style={styles.scanData}>{item.data}</Text>
-            </View>
-          </TouchableHighlight>
-          )}
-        />
- 
-
-      </View>
-      </ScrollView>
-    );
-  }
-
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-//    justifyContent: 'center',
-//    alignItems: 'center',
-    backgroundColor: '#F5FCFF',
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
-  },
-  h1: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 5,
-    fontWeight: "bold",
-  },
-  h3: {
-    fontSize: 14,
-    textAlign: 'center',
-    margin: 10,
-    fontWeight: "bold",
-  },
-  itemHeading: {
-    fontSize: 12,
-    textAlign: 'left',
-    left: 10,
-    fontWeight: "bold",
-  },
-  itemText: {
-    fontSize: 12,
-    textAlign: 'left',
-    margin: 10,
-  },
-  itemTextAttention: {
-    fontSize: 12,
-    textAlign: 'left',
-    margin: 10,
-    backgroundColor: '#ffd200'
-  },
-  scanDataHead: {
-    fontSize: 10,
-    margin: 2,
-    fontWeight: "bold",
-    color: 'white',
-  },
-  scanDataHeadRight: {
-    fontSize: 10,
-    margin: 2,
-    textAlign: 'right',
-    fontWeight: "bold",
-    color: 'white',
-  },
-  scanData: {
-    fontSize: 16,
-    fontWeight: "bold",
-    textAlign: 'center',
-    margin: 2,
-    color: 'white',
-  }
-});
+  */
