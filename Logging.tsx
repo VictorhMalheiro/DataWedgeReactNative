@@ -1,5 +1,3 @@
-import { useReducer } from "react";
-
 export type LogMessage = {
   logLevel: "trace" | "debug" | "info" | "warn" | "error",
   message: string,
@@ -9,17 +7,16 @@ export type LogMessage = {
 
 export function useNullLogging()
 {
-  const eventReducer:any = (state: any, action: LogMessage) => {
+  function effect(action: LogMessage): void {
     
   }
-  const [ignore, dispatch] = useReducer(eventReducer, "");
-  return dispatch;
+  return effect;
 }
 
 
 export function useConsoleLogging()
 {
-  function eventReducer(state: any, action: LogMessage): any {
+  function effect(action: LogMessage): void {
     switch(action.logLevel)
     {
       case 'trace':
@@ -39,6 +36,5 @@ export function useConsoleLogging()
           break;
     }
   }
-  const [ignore, dispatch] = useReducer(eventReducer, "");
-  return dispatch;
+  return effect;
 }

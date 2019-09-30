@@ -9,7 +9,6 @@ import React, {Component, useState, useEffect, useRef, useReducer} from 'react';
 import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert, CheckBox, Button, NativeEventEmitter} from 'react-native';
 import { DeviceEventEmitter } from 'react-native';
 import DataWedgeIntents from 'react-native-datawedge-intents';
-import { useConsoleLogging } from './Logging';
 import { useDataWedgeScanHandler } from './DataWedgeScanHandler';
 
 export default function App()  {
@@ -31,7 +30,7 @@ export default function App()  {
   const [scans, setscans] = useState(Array());
   //const [sendCommandResult, setsendCommandResult] = useState("false");
 
-  const [currentData, dispatch] = useDataWedgeScanHandler({
+  const [dataWedgeState, dispatch] = useDataWedgeScanHandler({
       appNamespace: "com.datawedgereactnative.demo"
   });
 

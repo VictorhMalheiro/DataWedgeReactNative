@@ -6,7 +6,10 @@ type DataWedgeScanConfig = {
   appNamespace: string,
 }
 type ScanAction = {
-  type: string,
+  type: "ToggleScan",
+}
+type DataWedgeState = {
+    version: number
 }
 
 export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
@@ -14,19 +17,19 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
   // TOOD: use IoC to resolve the logging type we want to use.
   const log = useConsoleLogging();
 
-  const eventReducer:any = (state:ScanAction, action: ScanAction) => {
+  function eventReducer(state:DataWedgeState, action: ScanAction): DataWedgeState {
     
     // Some of these action types have side-effects, and are not a state reduction so in a production app
     // it may be appropriate to extract these into a side-effect management platform like Redux Saga.
-    log({logLevel: 'debug', message: "DWReducer - Previous state: ", additionalParams: [state]});
-    log({logLevel: 'debug', message: "DWReducer - Action: ", additionalParams: [action]});
+    log({logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state]});
+    log({logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action]});
     switch (action.type)
     {
       case "ToggleScan":
         sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
         break;
     }
-    log({logLevel: 'debug', message: "DWReducer - New state: ", additionalParams: [state]});
+    log({logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state]});
     return state;
   }
 
@@ -36,11 +39,7 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
 
   //const [sendCommandResult, setsendCommandResult] = useState("false");
   const [sendCommandResult, setsendCommandResult] = useState("true");
-  const initialState: ScanAction = {type: ""};
-  const toggleScanner = () => 
-  {
-      sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
-  }
+  const [dwState, setDWState] = useState<DataWedgeState>({version: -1});
 
   const sendCommand:any = (extraName: string, extraValue: any): any => {
     log({logLevel: 'debug', message: "Sending Command from hook: " + extraName, additionalParams: extraValue});
@@ -52,5 +51,5 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
         extras: broadcastExtras});
   }
 
-  return useReducer(eventReducer, initialState);
+  return useReducer(eventReducer, dwState);
 }
