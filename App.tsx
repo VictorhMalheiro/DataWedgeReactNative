@@ -186,15 +186,12 @@ export default function App()  {
   // TODO: enumeratedScanners should be a data type.
   const enumerateScanners:any = (enumeratedScanners: any) =>
   {
-    var humanReadableScannerList = "";
-    for (var i = 0; i < enumeratedScanners.length; i++)
+    setenumeratedScannersText(enumeratedScanners.map((s: any) => 
     {
-        console.log("Scanner found: name= " + enumeratedScanners[i].SCANNER_NAME + ", id=" + enumeratedScanners[i].SCANNER_INDEX + ", connected=" + enumeratedScanners[i].SCANNER_CONNECTION_STATE);
-        humanReadableScannerList += enumeratedScanners[i].SCANNER_NAME;
-        if (i < enumeratedScanners.length - 1)
-            humanReadableScannerList += ", ";
+      console.log("Scanner found: name= " + s.SCANNER_NAME + ", id=" + s.SCANNER_INDEX + ", connected=" + s.SCANNER_CONNECTION_STATE);
+      return s.SCANNER_NAME;
     }
-    setenumeratedScannersText(humanReadableScannerList);
+    ).join(", "));
   }
 
   const activeProfile:any = (theActiveProfile: string) =>
