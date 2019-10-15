@@ -143,6 +143,90 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
     registerBroadcastReceiver();
   }
 
+  const datawedge63:any = () =>
+  {
+    console.log("Datawedge 6.3 APIs are available");
+    //  Create a profile for our application
+    sendCommand("com.symbol.datawedge.api.CREATE_PROFILE", "ZebraReactNativeDemo");
+
+    setdwVersionText("6.3.  Please configure profile manually.  See ReadMe for more details.");
+    
+    //  Although we created the profile we can only configure it with DW 6.4.
+    sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
+
+    //  Enumerate the available scanners on the device
+    sendCommand("com.symbol.datawedge.api.ENUMERATE_SCANNERS", "");
+
+    //  Functionality of the scan button is available
+    setscanButtonVisible(true);
+
+  }
+
+  const datawedge64:any = () =>
+  {
+    console.log("Datawedge 6.4 APIs are available");
+
+    //  Documentation states the ability to set a profile config is only available from DW 6.4.
+    //  For our purposes, this includes setting the decoders and configuring the associated app / output params of the profile.
+    setdwVersionText("6.4.");
+    setdwVersionTextStyle({...styles.itemText, backgroundColor: "white"});
+    
+    //  Decoders are now available
+    setcheckBoxesDisabled(false);
+
+    //  Configure the created profile (associated app and keyboard plugin)
+    var profileConfig = {
+        "PROFILE_NAME": "ZebraReactNativeDemo",
+        "PROFILE_ENABLED": "true",
+        "CONFIG_MODE": "UPDATE",
+        "PLUGIN_CONFIG": {
+            "PLUGIN_NAME": "BARCODE",
+            "RESET_CONFIG": "true",
+            "PARAM_LIST": {}
+        },
+        "APP_LIST": [{
+            "PACKAGE_NAME": "com.datawedgereactnative.demo",
+            "ACTIVITY_LIST": ["*"]
+        }]
+    };
+    sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig);
+
+    //  Configure the created profile (intent plugin)
+    var profileConfig2 = {
+        "PROFILE_NAME": "ZebraReactNativeDemo",
+        "PROFILE_ENABLED": "true",
+        "CONFIG_MODE": "UPDATE",
+        "PLUGIN_CONFIG": {
+            "PLUGIN_NAME": "INTENT",
+            "RESET_CONFIG": "true",
+            "PARAM_LIST": {
+                "intent_output_enabled": "true",
+                "intent_action": "com.zebra.reactnativedemo.ACTION",
+                "intent_delivery": "2"
+            }
+        }
+    };
+    sendCommand("com.symbol.datawedge.api.SET_CONFIG", profileConfig2);
+
+    //  Give some time for the profile to settle then query its value
+    setTimeout(() => {
+        sendCommand("com.symbol.datawedge.api.GET_ACTIVE_PROFILE", "");
+    }, 1000);
+  }
+
+  const datawedge65:any = () =>
+  {
+    console.log("Datawedge 6.5 APIs are available");
+
+    setdwVersionText("6.5 or higher.");
+
+    //  Instruct the API to send 
+    //TODO: uncomment 
+    //setsendCommandResult("true");
+    setlastApiVisible(true);
+  }
+
+
 
 
   return useReducer(eventReducer, dwState);
