@@ -1,5 +1,6 @@
 import { useConsoleLogging } from "./Logging";
-import { useState, useReducer } from "react";
+import React from "react";
+import { useState, useReducer, createContext, useContext } from "react";
 import DataWedgeIntents from 'react-native-datawedge-intents';
 
 type DataWedgeScanConfig = {
@@ -12,6 +13,16 @@ type DataWedgeState = {
     version: number
 }
 
+export const ApplicationScanContext = createContext({});
+
+export const ScanProvider = ({reducer, initialState, children}: any) => (
+  <ApplicationScanContext.Provider value={useReducer(reducer, initialState)}>
+    {children}
+  </ApplicationScanContext.Provider>
+);
+export const useDataWedgeState = () => useContext(ApplicationScanContext);
+
+
 export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
 {
   // TOOD: use IoC to resolve the logging type we want to use.
@@ -21,15 +32,15 @@ export function useDataWedgeScanHandler(config: DataWedgeScanConfig)
     
     // Some of these action types have side-effects, and are not a state reduction so in a production app
     // it may be appropriate to extract these into a side-effect management platform like Redux Saga.
-    log({logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state]});
-    log({logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action]});
+    log({logLevel: 'debug', message: "DWReducer - Previous state: ", additionalParams: [state]});
+    log({logLevel: 'debug', message: "DWReducer - Action: ", additionalParams: [action]});
     switch (action.type)
     {
       case "ToggleScan":
         sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
         break;
     }
-    log({logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state]});
+    log({logLevel: 'debug', message: "DWReducer - New state: ", additionalParams: [state]});
     return state;
   }
 

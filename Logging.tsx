@@ -1,8 +1,12 @@
 export type LogMessage = {
-  logLevel: "trace" | "debug" | "info" | "warn" | "error",
+  logLevel: "debug" | "info" | "warn" | "error",
   message: string,
   additionalParams: any[] | undefined
-}
+} |
+{
+    logLevel: "trace",
+    additionalParams: any[] | undefined
+  } 
 
 
 export function useNullLogging()
@@ -20,7 +24,7 @@ export function useConsoleLogging()
     switch(action.logLevel)
     {
       case 'trace':
-        console.trace(action.message, action.additionalParams);
+        console.trace(action.additionalParams);
         break;
       case 'debug':
         console.debug(action.message, action.additionalParams);
