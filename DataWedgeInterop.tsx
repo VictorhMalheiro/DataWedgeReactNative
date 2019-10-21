@@ -3,6 +3,7 @@ import { useState, useReducer, useEffect, useRef } from "react";
 import DataWedgeIntents from 'react-native-datawedge-intents';
 import { NativeEventEmitter } from "react-native";
 
+
 type DataWedgeScanConfig = {
   appNamespace: string,
 }
@@ -33,12 +34,16 @@ type DataWedgeState = {
   lastScan: string | null,
   activeProfileName: string | null
 }
+type DWScanHandler = {
+    handler: any
+} | null
 
 export function useDataWedgeInterop() {
   // TOOD: use IoC to resolve the logging type we want to use.
   const log = useConsoleLogging();
 
   const apiBase:string = "com.symbol.datawedge.api.";
+  const dwEventNamespace:string = "com.symbol.datawedge."
   const broadcastActionLabel:string = apiBase + "ACTION";
   const [dwState, setDWState] = useState<DataWedgeState>(
     {
@@ -51,14 +56,14 @@ export function useDataWedgeInterop() {
   });
 
   const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
-  const [handler, setHandler] = useState();
+  const [handler, setHandler] = useState<DWScanHandler>();
 
   function eventReducer(state: DataWedgeState, action: ScanAction): DataWedgeState {
 
     // Some of these action types have side-effects, and are not a state reduction so in a production app
     // it may be appropriate to extract these into a side-effect management platform like Redux Saga.
-    log({ logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state] });
-    log({ logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action] });
+    //log({ logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state] });
+    //log({ logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action] });
     switch (action.type) {
       case "ToggleScan":
         sendCommand(apiBase + "SOFT_SCAN_TRIGGER", 'TOGGLE_SCANNING');
@@ -83,7 +88,8 @@ export function useDataWedgeInterop() {
         break;
       case "RegisterScanHandler":
         console.log("This is where a handler should be registered.");
-        setHandler(action.handler);
+        console.log(action.handler);
+        setHandler({handler : action.handler});
         //eventEmitter.addListener('datawedge_broadcast_intent', action.handler);
         break;
       case "UnregisterScanHandler":
@@ -92,7 +98,7 @@ export function useDataWedgeInterop() {
         setHandler(null);
         break;
     }
-    log({ logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state] });
+    //log({ logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state] });
     return state;
   }
 
@@ -110,30 +116,6 @@ export function useDataWedgeInterop() {
 
 
 
-/*
-
-  const intentHandler = useEffect(() => 
-  {
-    eventEmitter.addListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
-    return (() => {
-      eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
-    })
-  }, ["hot"]);
-
-  if (broadcastReceiverHandler.current == null)
-  {
-    broadcastReceiverHandler.current = (intent:any) =>
-    {
-      broadcastReceiver(intent);
-    }
-    registerBroadcastReceiver();
-  }
-
-*/
-
-
-
-
   useEffect(() => {
     DataWedgeIntents.registerBroadcastReceiver({
       filterActions: [
@@ -146,7 +128,7 @@ export function useDataWedgeInterop() {
     });
     eventEmitter.addListener('datawedge_broadcast_intent', broadcastReceiver);
     return () => eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiver);
-  });
+  }, [eventEmitter]);
 
   type DataWedgeResult = null | {
     type: "ResultInfo", infoDescription: string
@@ -171,9 +153,9 @@ export function useDataWedgeInterop() {
     var apiProperties:any = {};
     for (var property in intent)
     {
-        if (property.startsWith(apiBase))
+        if (property.startsWith(dwEventNamespace))
         {
-          var baseName = property.substr(apiBase.length);
+          var baseName = property.substr(dwEventNamespace.length);
           apiProperties[baseName] = intent[property];
         }
     }
@@ -210,8 +192,11 @@ export function useDataWedgeInterop() {
         dataWedgeResult = {type: "Scan", filteredProperties: apiProperties};
         //(intent, new Date().toLocaleString());
     }
+    
+    console.log("Handler check...");
     if (handler != null) {
-      handler(dataWedgeResult);
+        console.log("Handler dispatch");
+        handler.handler(dataWedgeResult);
     }
   }
 

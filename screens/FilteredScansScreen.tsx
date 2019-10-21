@@ -17,22 +17,8 @@ type Barcode = {
 }
 
 export default function FilteredScansScreen()  {
-  const scanHandler = function(scanData:any)  {
-    console.log("Got Scan Data23!");
-    console.log(scanData);
-  }
-  const [dwInterop, dispatchDWRequest] = useDataWedgeInterop();
-  
-  useEffect(() =>
-    {
-        dispatchDWRequest({type: "RegisterScanHandler", handler: scanHandler});
-        return () => dispatchDWRequest({type: "UnregisterScanHandler", handler: scanHandler});
-    }
-  );
 
-
-  const _onPressScanButton:any = () => dispatchDWRequest({ type: 'ToggleScan'});
-
+    
   const [validBarcodes, setValidBarcodes] = useState<Barcode []>([
     {
       isActive: true,
@@ -60,6 +46,56 @@ export default function FilteredScansScreen()  {
       decodedText: "MNO-7890"
     },
   ]);
+
+
+  const scanHandler = function(scanData:any)  {
+    console.log("Got Scanz Data!");
+    console.log(scanData);
+    console.log(validBarcodes);
+    var currentBarcode = scanData.filteredProperties.data_string;
+    console.log(currentBarcode);
+    var activateNextBarcode: boolean = false;
+    let newBarcodes = [];
+    for (let barcode of validBarcodes)
+    {
+        var newBarcode = {...barcode};
+        if (activateNextBarcode)
+        {
+            console.log("activated next barcode");
+            newBarcode.isActive = true;
+            activateNextBarcode = false;
+        }
+        if (newBarcode.isActive)
+        {
+            if (currentBarcode == newBarcode.decodedText)
+            {
+                newBarcode.isActive = false;
+                newBarcode.hasBeenScanned = true;
+                activateNextBarcode = true;
+                console.log("Scanned correct barcode!");
+            }
+            else
+            {
+                console.log("Scanned incorrect barcode!");
+            }
+        }
+        newBarcodes.push(newBarcode);
+    }
+    setValidBarcodes(newBarcodes);
+  }
+  const [dwInterop, dispatchDWRequest] = useDataWedgeInterop();
+  
+  useEffect(() =>
+    {
+        dispatchDWRequest({type: "RegisterScanHandler", handler: scanHandler});
+        return () => dispatchDWRequest({type: "UnregisterScanHandler", handler: scanHandler});
+    }
+  ,
+  [dwInterop]);
+
+
+  const _onPressScanButton:any = () => dispatchDWRequest({ type: 'ToggleScan'});
+
 
   const [hasCurrentVersion, sethasCurrentVersion] = useState(false);
   if (hasCurrentVersion == false)
