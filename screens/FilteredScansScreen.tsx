@@ -7,9 +7,6 @@
 
 import React, {Component, useState, useEffect, useRef, useReducer} from 'react';
 import {Platform, StyleSheet, Text, View, ScrollView, FlatList, TouchableHighlight, Alert, CheckBox, Button, NativeEventEmitter} from 'react-native';
-import { DeviceEventEmitter } from 'react-native';
-import DataWedgeIntents from 'react-native-datawedge-intents';
-import { useDataWedgeConfig } from '../DataWedgeConfig';
 import { useDataWedgeInterop } from '../DataWedgeInterop';
 
 
@@ -21,10 +18,12 @@ type Barcode = {
 
 export default function FilteredScansScreen()  {
   const scanHandler = function(scanData:any)  {
-    console.log("Got Scan Data!");
+    console.log("Got Scan Data23!");
+    console.log(scanData);
   }
   const [dwInterop, dispatchDWRequest] = useDataWedgeInterop();
-  const someData = useEffect(() =>
+  
+  useEffect(() =>
     {
         dispatchDWRequest({type: "RegisterScanHandler", handler: scanHandler});
         return () => dispatchDWRequest({type: "UnregisterScanHandler", handler: scanHandler});
@@ -80,23 +79,19 @@ export default function FilteredScansScreen()  {
           extraData={validBarcodes}
           keyExtractor={item => item.decodedText}
           renderItem={({item, separators}) => (
-            <TouchableHighlight
-            onShowUnderlay={separators.highlight}
-            onHideUnderlay={separators.unhighlight}>
             <View style={{
               backgroundColor: '#0077A0', 
               margin:10,
               borderRadius: 5,
             }}>
             <View style={{flexDirection: 'row', flex: 1}}>
-            <Text style={styles.scanDataHead}>{item.hasBeenScanned}</Text>
+            <Text style={styles.scanDataHead}>{item.hasBeenScanned ? "Scanned" : "Not Yet Scanned"}</Text>
             <View style={{flex: 1}}>
-              <Text style={styles.scanDataHeadRight}>{item.isActive}</Text>
+              <Text style={styles.scanDataHeadRight}>{item.isActive ? "Active" : "Inactive"}</Text>
             </View>
             </View>
             <Text style={styles.scanData}>{item.decodedText}</Text>
             </View>
-          </TouchableHighlight>
           )}
         />
  
@@ -110,14 +105,7 @@ export default function FilteredScansScreen()  {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-//    justifyContent: 'center',
-//    alignItems: 'center',
     backgroundColor: '#F5FCFF',
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
   },
   h1: {
     fontSize: 20,
@@ -130,23 +118,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     margin: 10,
     fontWeight: "bold",
-  },
-  itemHeading: {
-    fontSize: 12,
-    textAlign: 'left',
-    left: 10,
-    fontWeight: "bold",
-  },
-  itemText: {
-    fontSize: 12,
-    textAlign: 'left',
-    margin: 10,
-  },
-  itemTextAttention: {
-    fontSize: 12,
-    textAlign: 'left',
-    margin: 10,
-    backgroundColor: '#ffd200'
   },
   scanDataHead: {
     fontSize: 10,

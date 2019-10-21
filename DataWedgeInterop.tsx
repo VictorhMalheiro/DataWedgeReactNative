@@ -50,6 +50,8 @@ export function useDataWedgeInterop() {
 
   });
 
+  const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
+  const [handler, setHandler] = useState();
 
   function eventReducer(state: DataWedgeState, action: ScanAction): DataWedgeState {
 
@@ -81,9 +83,13 @@ export function useDataWedgeInterop() {
         break;
       case "RegisterScanHandler":
         console.log("This is where a handler should be registered.");
+        setHandler(action.handler);
+        //eventEmitter.addListener('datawedge_broadcast_intent', action.handler);
         break;
       case "UnregisterScanHandler":
         console.log("This is where a handler should be unregistered.");
+        //eventEmitter.removeListener('datawedge_broadcast_intent', action.handler);
+        setHandler(null);
         break;
     }
     log({ logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state] });
@@ -101,78 +107,112 @@ export function useDataWedgeInterop() {
       extras: broadcastExtras
     });
   }
-  let broadcastReceiverHandler: any = useRef(null);
 
-  const registerBroadcastReceiver: any = () => {
-    DataWedgeIntents.registerBroadcastReceiver({
-      filterActions: [
-        'com.zebra.reactnativedemo.ACTION',
-        'com.symbol.datawedge.api.RESULT_ACTION'
-      ],
-      filterCategories: [
-        'android.intent.category.DEFAULT'
-      ]
-    });
-  }
 
-  const broadcastReceiver: any = (intent: any) => {
-    //  Broadcast received
-    console.log('Received Intent: ' + JSON.stringify(intent));
 
-    /*
-  
-    if (intent.hasOwnProperty('RESULT_INFO')) {
-        var commandResult = intent.RESULT + " (" +
-            intent.COMMAND.substring(intent.COMMAND.lastIndexOf('.') + 1, intent.COMMAND.length) + ")";// + JSON.stringify(intent.RESULT_INFO);
-        setDWState({...dwState, lastCommand: commandResult});
-    }
-  
-    if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_GET_VERSION_INFO')) {
-        //  The version has been returned (DW 6.3 or higher).  Includes the DW version along with other subsystem versions e.g MX  
-        var versionInfo = intent['com.symbol.datawedge.api.RESULT_GET_VERSION_INFO'];
-        console.log('Version Info: ' + JSON.stringify(versionInfo));
-        var datawedgeVersion = versionInfo['DATAWEDGE'];
-        console.log("Datawedge version: " + datawedgeVersion);
-  
-        //  Fire events sequentially so the application can gracefully degrade the functionality available on earlier DW versions
-        if (datawedgeVersion >= "6.3")
-            datawedge63();
-        if (datawedgeVersion >= "6.4")
-            datawedge64();
-        if (datawedgeVersion >= "6.5")
-            datawedge65();
-    }
-    else if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS')) {
-        //  Return from our request to enumerate the available scanners
-        var enumeratedScannersObj = intent['com.symbol.datawedge.api.RESULT_ENUMERATE_SCANNERS'];
-        setDWState({...dwState, availableScanners: ["A", "B", "C"]});
-    }
-    else if (intent.hasOwnProperty('com.symbol.datawedge.api.RESULT_GET_ACTIVE_PROFILE')) {
-        //  Return from our request to obtain the active profile
-        var activeProfileObj = intent['com.symbol.datawedge.api.RESULT_GET_ACTIVE_PROFILE'];
-        setDWState({...dwState, activeProfileName: activeProfileObj});
-    }
-    else if (!intent.hasOwnProperty('RESULT_INFO')) {
-        //  A barcode has been scanned
-        setDWState({...dwState, lastScan: intent});
-        //(intent, new Date().toLocaleString());
-    }*/
-  }
+/*
 
-  const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
-
-  const intentHandler = useEffect(() => {
+  const intentHandler = useEffect(() => 
+  {
     eventEmitter.addListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
     return (() => {
       eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiverHandler.current);
     })
   }, ["hot"]);
 
-  if (broadcastReceiverHandler.current == null) {
-    broadcastReceiverHandler.current = (intent: any) => {
+  if (broadcastReceiverHandler.current == null)
+  {
+    broadcastReceiverHandler.current = (intent:any) =>
+    {
       broadcastReceiver(intent);
     }
     registerBroadcastReceiver();
+  }
+
+*/
+
+
+
+
+  useEffect(() => {
+    DataWedgeIntents.registerBroadcastReceiver({
+      filterActions: [
+        'com.zebra.reactnativedemo.ACTION', // TODO: pass in this namespace
+        apiBase + 'RESULT_ACTION'
+      ],
+      filterCategories: [
+        'android.intent.category.DEFAULT'
+      ]
+    });
+    eventEmitter.addListener('datawedge_broadcast_intent', broadcastReceiver);
+    return () => eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiver);
+  });
+
+  type DataWedgeResult = null | {
+    type: "ResultInfo", infoDescription: string
+  } |
+  {
+    type: "DWVersion", version: string
+  } | 
+  {
+    type: "EnumerateScanners", scanners: any[]
+  } | 
+  { 
+    type: "ActiveProfile", profile: any
+  } |
+  {
+    type: "Scan", filteredProperties: any
+  };
+
+  const broadcastReceiver: any = (intent: any) => {
+    //  Broadcast received
+    //console.log('Received Intent: ' + JSON.stringify(intent));
+
+    var apiProperties:any = {};
+    for (var property in intent)
+    {
+        if (property.startsWith(apiBase))
+        {
+          var baseName = property.substr(apiBase.length);
+          apiProperties[baseName] = intent[property];
+        }
+    }
+
+    var dataWedgeResult : DataWedgeResult = null;
+    // Process intent
+    if (intent.hasOwnProperty('RESULT_INFO')) {
+        var commandResult = intent.RESULT + " (" +
+            intent.COMMAND.substring(intent.COMMAND.lastIndexOf('.') + 1, intent.COMMAND.length) + ")";// + JSON.stringify(intent.RESULT_INFO);
+        dataWedgeResult = { type: "ResultInfo", infoDescription: commandResult};
+    }
+  
+    if (apiProperties.hasOwnProperty('RESULT_GET_VERSION_INFO')) {
+        //  The version has been returned (DW 6.3 or higher).  Includes the DW version along with other subsystem versions e.g MX  
+        var versionInfo = apiProperties['RESULT_GET_VERSION_INFO'];
+        //console.log('Version Info: ' + JSON.stringify(versionInfo));
+        var datawedgeVersion = versionInfo['DATAWEDGE'];
+        //console.log("Datawedge version: " + datawedgeVersion);
+        dataWedgeResult = { type: "DWVersion", version: datawedgeVersion };
+
+    }
+    else if (apiProperties.hasOwnProperty('RESULT_ENUMERATE_SCANNERS')) {
+        //  Return from our request to enumerate the available scanners
+        var enumeratedScannersObj = apiProperties['RESULT_ENUMERATE_SCANNERS'];
+        dataWedgeResult = { type: "EnumerateScanners", scanners: enumeratedScannersObj };
+    }
+    else if (apiProperties.hasOwnProperty('RESULT_GET_ACTIVE_PROFILE')) {
+        //  Return from our request to obtain the active profile
+        var activeProfileObj = apiProperties['RESULT_GET_ACTIVE_PROFILE'];
+        dataWedgeResult = { type: "ActiveProfile", profile: activeProfileObj};
+    }
+    else if (!intent.hasOwnProperty('RESULT_INFO')) {
+        //  A barcode has been scanned
+        dataWedgeResult = {type: "Scan", filteredProperties: apiProperties};
+        //(intent, new Date().toLocaleString());
+    }
+    if (handler != null) {
+      handler(dataWedgeResult);
+    }
   }
 
   return useReducer(eventReducer, dwState);
