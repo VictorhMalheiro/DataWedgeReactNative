@@ -47,9 +47,9 @@ export default function FilteredScansScreen()  {
     },
   ]);
 
-
+// create reducer so closure is on reducer rather than on barcode data
   const scanHandler = function(scanData:any)  {
-    console.log("Got Scanz Data!");
+    console.log("Got Scan Data!");
     console.log(scanData);
     console.log(validBarcodes);
     var currentBarcode = scanData.filteredProperties.data_string;
@@ -83,7 +83,12 @@ export default function FilteredScansScreen()  {
     }
     setValidBarcodes(newBarcodes);
   }
-  const [dwInterop, dispatchDWRequest] = useDataWedgeInterop();
+  
+  const config = {
+    appNamespace: "com.datawedgereactnative.demo",
+    profileName: "ZebraReactNativeDemo"
+    };
+  const [dwInterop, dispatchDWRequest] = useDataWedgeInterop(config);
   
   useEffect(() =>
     {

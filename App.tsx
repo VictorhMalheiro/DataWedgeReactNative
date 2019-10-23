@@ -5,7 +5,8 @@ import AllScansScreen from './screens/AllScansScreen';
 import FilteredScansScreen from './screens/FilteredScansScreen';
 
 const MainNavigator = createStackNavigator({
-  Home: {screen: FilteredScansScreen}, // TODO: change home back to Config and use react-navgation@next to make tab based routing for hooks components 
+  //Home: {screen: FilteredScansScreen}, // TODO: change home back to Config and use react-navgation@next to make tab based routing for hooks components 
+  Home: {screen: ConfigScreen},
   Config: {screen: ConfigScreen},
   AllScans: {screen: AllScansScreen},
   FilteredScans: {screen: FilteredScansScreen},

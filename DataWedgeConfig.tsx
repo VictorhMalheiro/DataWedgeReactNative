@@ -2,42 +2,112 @@ import { useConsoleLogging } from "./Logging";
 import { useState, useReducer, useEffect, useRef } from "react";
 import DataWedgeIntents from 'react-native-datawedge-intents';
 import { NativeEventEmitter } from "react-native";
-import { useDataWedgeInterop } from "./DataWedgeInterop";
+import { useDataWedgeInterop, DataWedgeResult, DWVersion, ActiveProfile, EnumerateScanners } from "./DataWedgeInterop";
 
 type DataWedgeConfig = {
   appNamespace: string,
+  profileName: string
 }
 type DataWedgeState = {
-    version: number,
-    availableScanners: string[],
+    version: string,
+    availableScanners: any[],
     lastCommand: string | null,
     lastScan: string | null,
     activeProfileName: string | null
 }
 
 type ConfigAction = {
-  type: string
+  type: "Initialize",
 }
 
-export function useDataWedgeConfig(config: DataWedgeConfig)
+function sleep(ms:number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+const eventDelegates: any = {
+
+};
+const eventsCompleted: any = {
+
+};
+
+const awaitEventReceived = async (eventType: string, callback:any, timeoutMs: number) => {
+    // Wrap callback in a function so it will just sit there and wait
+    // until the callback is called.
+    let p = async (dwResult: DataWedgeResult) => 
+        { 
+            await callback(dwResult);
+            eventsCompleted[eventType] = true; 
+        };
+
+    eventDelegates[eventType] = p;
+
+    let startTimestamp: number = new Date().getTime();
+    while (true)
+    {
+        if (eventsCompleted[eventType])
+        {
+            eventsCompleted[eventType] = false;
+            break;
+        }
+        await sleep(100);
+        let currentTimestamp: number = new Date().getTime();
+        if (currentTimestamp - startTimestamp > timeoutMs)
+        {
+            console.log("Timeout awaiting event response of type: " + eventType);
+            break;
+        }
+    }
+}
+
+
+const scanHandler = (scanData: DataWedgeResult) => {
+    if (scanData == null) { return; }
+    if (eventDelegates[scanData.type] !== undefined && eventDelegates[scanData.type] !== null)
+    {
+        eventDelegates[scanData.type](scanData);
+        eventDelegates[scanData.type] = null;
+    }
+}
+;
+
+export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: any)
 {
+  const [hasInitialized, setHasInitialized] = useState(false);
   // TODO: use IoC to resolve the logging type we want to use.
   const log = useConsoleLogging();
-  const [dwInterop, dispatchDWRequest] = useDataWedgeInterop();
+
+  async function initialize() {
+    await dispatchDWRequest({type: "RegisterScanHandler", handler: scanHandler});
+    await determineVersion();
+    // TODO: call these based on actual version returned.
+    if (dwState.current.version >= "6.3.0")
+    {
+        await datawedge63();
+    }
+    if (dwState.current.version >= "6.4.0")
+    {
+        await datawedge64();
+    }
+  }
 
   function eventReducer(state:DataWedgeState, action: ConfigAction): DataWedgeState {
     
     // Some of these action types have side-effects, and are not a state reduction so in a production app
     // it may be appropriate to extract these into a side-effect management platform like Redux Saga.
-    log({logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state]});
-    log({logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action]});
+    //log({logLevel: 'trace', message: "DWReducer - Previous state: ", additionalParams: [state]});
+    //log({logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action]});
     switch (action.type)
     {
       case "Initialize":
-        console.log("Starting initialization.");
+        if (!hasInitialized)
+        {
+            setHasInitialized(true);
+            initialize();
+        }
         break;
     }
-    log({logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state]});
+    //log({logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state]});
     return state;
   }
   
@@ -48,9 +118,9 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
   //const [sendCommandResult, setsendCommandResult] = useState("false");
   // TODO: set send command result based on DW version.
   const [sendCommandResult, setsendCommandResult] = useState("true");
-  const [dwState, setDWState] = useState<DataWedgeState>(
+  const dwState = useRef(
     {
-    version: -1,
+    version: "",
     availableScanners: [],
     lastCommand: null,
     lastScan: null, // TODO: make this a data type
@@ -58,26 +128,37 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
 
   });
 
-  const determineVersion:any = () => 
+  const determineVersion:any = async () => 
   {
-    console.log("Determine Version");
+    let watcher:any = awaitEventReceived("DWVersion", (scanData: DWVersion) => {
+        dwState.current = {...dwState.current, version: scanData.version }
+    }, 5000);
     dispatchDWRequest({ type: "GetVersion" });
+    await watcher;
   }
 
-
-  const datawedge63:any = () =>
+  const datawedge63:any = async () =>
   {
-    console.log("Datawedge 6.3 APIs are available");
     //  Create a profile for our application
-    dispatchDWRequest({ type: "CreateProfile", profileName: "ZebraReactNativeDemo"});
 
-    // TODO: migrate to UI layer 
-    // setdwVersionText("6.3.  Please configure profile manually.  See ReadMe for more details.");
-    
+    await dispatchDWRequest({ type: "CreateProfile", profileName: config.profileName});
+
+
     //  Although we created the profile we can only configure it with DW 6.4.
+    
+    let watcher:any = awaitEventReceived("ActiveProfile", (scanData: ActiveProfile) => {
+        dwState.current = {...dwState.current, activeProfileName: scanData.profile }
+    }, 5000);
+
     dispatchDWRequest({ type: "GetActiveProfile" });
 
+    await watcher;
     //  Enumerate the available scanners on the device
+    
+    let watcher:any = awaitEventReceived("EnumerateScanners", (scanData: EnumerateScanners) => {
+        dwState.current = {...dwState.current, availableScanners: scanData.scanners }
+    }, 5000);
+
     dispatchDWRequest({type: "EnumerateScanners"});
 
     //  Functionality of the scan button is available
@@ -102,7 +183,7 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
 
     //  Configure the created profile (associated app and keyboard plugin)
     var profileConfig = {
-        "PROFILE_NAME": "ZebraReactNativeDemo",
+        "PROFILE_NAME": config.profileName,
         "PROFILE_ENABLED": "true",
         "CONFIG_MODE": "UPDATE",
         "PLUGIN_CONFIG": {
@@ -111,7 +192,7 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
             "PARAM_LIST": {}
         },
         "APP_LIST": [{
-            "PACKAGE_NAME": "com.datawedgereactnative.demo",
+            "PACKAGE_NAME": config.appNamespace,
             "ACTIVITY_LIST": ["*"]
         }]
     };
@@ -119,7 +200,7 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
 
     //  Configure the created profile (intent plugin)
     var profileConfig2 = {
-        "PROFILE_NAME": "ZebraReactNativeDemo",
+        "PROFILE_NAME": config.profileName,
         "PROFILE_ENABLED": "true",
         "CONFIG_MODE": "UPDATE",
         "PLUGIN_CONFIG": {
@@ -127,7 +208,7 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
             "RESET_CONFIG": "true",
             "PARAM_LIST": {
                 "intent_output_enabled": "true",
-                "intent_action": "com.zebra.reactnativedemo.ACTION",
+                "intent_action": config.appNamespace + ".ACTION",
                 "intent_delivery": "2"
             }
         }
@@ -140,23 +221,7 @@ export function useDataWedgeConfig(config: DataWedgeConfig)
     }, 1000);
   }
 
-  const datawedge65:any = () =>
-  {
-    console.log("Datawedge 6.5 APIs are available");
-
-    // TODO: migrate to UI layer 
-    //setdwVersionText("6.5 or higher.");
-
-    //  Instruct the API to send 
-    //TODO: uncomment 
-    //setsendCommandResult("true");
-    
-    // TODO: migrate to UI layer 
-    // setlastApiVisible(true);
-  }
 
 
-
-
-  return useReducer(eventReducer, dwState);
+  return useReducer(eventReducer, dwState.current);
 }

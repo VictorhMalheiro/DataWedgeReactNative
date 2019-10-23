@@ -1,5 +1,5 @@
 import { useConsoleLogging } from "./Logging";
-import { useState, useReducer, useEffect, useRef } from "react";
+import { useState, useReducer, useEffect, useRef, MutableRefObject } from "react";
 import DataWedgeIntents from 'react-native-datawedge-intents';
 import { NativeEventEmitter } from "react-native";
 
@@ -34,29 +34,39 @@ type DataWedgeState = {
   lastScan: string | null,
   activeProfileName: string | null
 }
-type DWScanHandler = {
-    handler: any
-} | null
 
-export function useDataWedgeInterop() {
+export type ResultInfo = {
+    type: "ResultInfo", infoDescription: string
+};
+
+export type DWVersion = {
+    type: "DWVersion", version: string
+};
+
+export type EnumerateScanners = {
+    type: "EnumerateScanners", scanners: any[]
+};
+export type ActiveProfile = { 
+    type: "ActiveProfile", profile: any
+};
+export type Scan = {
+    type: "Scan", filteredProperties: any
+};
+
+export type DataWedgeResult = null | ResultInfo | DWVersion | EnumerateScanners |  ActiveProfile | Scan;
+
+type DataWedgeScanHandler = null | { handler: any };
+/*
+let handler: any = null;*/
+
+export function useDataWedgeInterop(config: DataWedgeScanConfig) {
   // TOOD: use IoC to resolve the logging type we want to use.
   const log = useConsoleLogging();
-
+  const handler:MutableRefObject<DataWedgeScanHandler> = useRef(null);
   const apiBase:string = "com.symbol.datawedge.api.";
   const dwEventNamespace:string = "com.symbol.datawedge."
   const broadcastActionLabel:string = apiBase + "ACTION";
-  const [dwState, setDWState] = useState<DataWedgeState>(
-    {
-    version: -1,
-    availableScanners: [],
-    lastCommand: null,
-    lastScan: null, // TODO: make this a data type
-    activeProfileName: null
-
-  });
-
   const [eventEmitter, setEventEmitter] = useState(new NativeEventEmitter(DataWedgeIntents));
-  const [handler, setHandler] = useState<DWScanHandler>();
 
   function eventReducer(state: DataWedgeState, action: ScanAction): DataWedgeState {
 
@@ -88,14 +98,17 @@ export function useDataWedgeInterop() {
         break;
       case "RegisterScanHandler":
         console.log("This is where a handler should be registered.");
-        console.log(action.handler);
-        setHandler({handler : action.handler});
+        handler.current = { handler: action.handler };
+        //console.log({...state, lastCommand: "SDF", scanHandler: action.handler});
+        //return {...state, lastCommand: "SDF", scanHandler: action.handler};
+        //setHandler({handler : action.handler});
         //eventEmitter.addListener('datawedge_broadcast_intent', action.handler);
         break;
       case "UnregisterScanHandler":
         console.log("This is where a handler should be unregistered.");
+        handler.current = null;
         //eventEmitter.removeListener('datawedge_broadcast_intent', action.handler);
-        setHandler(null);
+        //return {...state, scanHandler: null };
         break;
     }
     //log({ logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state] });
@@ -114,12 +127,10 @@ export function useDataWedgeInterop() {
     });
   }
 
-
-
   useEffect(() => {
     DataWedgeIntents.registerBroadcastReceiver({
       filterActions: [
-        'com.zebra.reactnativedemo.ACTION', // TODO: pass in this namespace
+        config.appNamespace + ".ACTION",
         apiBase + 'RESULT_ACTION'
       ],
       filterCategories: [
@@ -130,30 +141,32 @@ export function useDataWedgeInterop() {
     return () => eventEmitter.removeListener('datawedge_broadcast_intent', broadcastReceiver);
   }, [eventEmitter]);
 
-  type DataWedgeResult = null | {
-    type: "ResultInfo", infoDescription: string
-  } |
-  {
-    type: "DWVersion", version: string
-  } | 
-  {
-    type: "EnumerateScanners", scanners: any[]
-  } | 
-  { 
-    type: "ActiveProfile", profile: any
-  } |
-  {
-    type: "Scan", filteredProperties: any
-  };
 
-  const broadcastReceiver: any = (intent: any) => {
+  
+  const [dwState, setDWState] = useReducer(eventReducer,
+    {
+    version: -1,
+    availableScanners: [],
+    lastCommand: null,
+    lastScan: null, // TODO: make this a data type
+    activeProfileName: null
+  });
+
+
+
+  function broadcastReceiver(intent: any)  {
     //  Broadcast received
     //console.log('Received Intent: ' + JSON.stringify(intent));
 
     var apiProperties:any = {};
     for (var property in intent)
     {
-        if (property.startsWith(dwEventNamespace))
+        if (property.startsWith(apiBase))
+        {
+          var baseName = property.substr(apiBase.length);
+          apiProperties[baseName] = intent[property];
+        }
+        else if (property.startsWith(dwEventNamespace))
         {
           var baseName = property.substr(dwEventNamespace.length);
           apiProperties[baseName] = intent[property];
@@ -193,12 +206,13 @@ export function useDataWedgeInterop() {
         //(intent, new Date().toLocaleString());
     }
     
-    console.log("Handler check...");
-    if (handler != null) {
-        console.log("Handler dispatch");
-        handler.handler(dataWedgeResult);
+    //console.log("Handler check...");
+    //console.log(dwState);
+    if (handler.current != null) {
+        //console.log("Handler dispatch");
+        handler.current.handler(dataWedgeResult);
     }
   }
-
-  return useReducer(eventReducer, dwState);
+  const retval: [DataWedgeState, React.Dispatch<ScanAction>] = [dwState, setDWState];
+  return retval;
 }
