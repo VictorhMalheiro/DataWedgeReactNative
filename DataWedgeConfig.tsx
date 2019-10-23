@@ -50,7 +50,7 @@ const awaitEventReceived = async (eventType: string, callback:any, timeoutMs: nu
             eventsCompleted[eventType] = false;
             break;
         }
-        await sleep(100);
+        await sleep(250);
         let currentTimestamp: number = new Date().getTime();
         if (currentTimestamp - startTimestamp > timeoutMs)
         {
@@ -140,46 +140,29 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
   const datawedge63:any = async () =>
   {
     //  Create a profile for our application
-
     await dispatchDWRequest({ type: "CreateProfile", profileName: config.profileName});
 
-
     //  Although we created the profile we can only configure it with DW 6.4.
-    
     let watcher:any = awaitEventReceived("ActiveProfile", (scanData: ActiveProfile) => {
         dwState.current = {...dwState.current, activeProfileName: scanData.profile }
     }, 5000);
 
-    dispatchDWRequest({ type: "GetActiveProfile" });
+    await dispatchDWRequest({ type: "GetActiveProfile" });
 
     await watcher;
     //  Enumerate the available scanners on the device
     
-    let watcher:any = awaitEventReceived("EnumerateScanners", (scanData: EnumerateScanners) => {
+    watcher = awaitEventReceived("EnumerateScanners", (scanData: EnumerateScanners) => {
         dwState.current = {...dwState.current, availableScanners: scanData.scanners }
     }, 5000);
 
-    dispatchDWRequest({type: "EnumerateScanners"});
-
-    //  Functionality of the scan button is available
-    // TODO: migrate to UI layer 
-    // setscanButtonVisible(true);
-
+    await dispatchDWRequest({type: "EnumerateScanners"});
+    await watcher;
   }
 
   const datawedge64:any = () =>
   {
     console.log("Datawedge 6.4 APIs are available");
-
-    //  Documentation states the ability to set a profile config is only available from DW 6.4.
-    //  For our purposes, this includes setting the decoders and configuring the associated app / output params of the profile.
-    // TODO: migrate to UI layer 
-    // setdwVersionText("6.4.");
-    // setdwVersionTextStyle({...styles.itemText, backgroundColor: "white"});
-    
-    //  Decoders are now available
-    // TODO: migrate to UI layer 
-    // setcheckBoxesDisabled(false);
 
     //  Configure the created profile (associated app and keyboard plugin)
     var profileConfig = {
