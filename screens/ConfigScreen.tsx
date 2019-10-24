@@ -14,8 +14,6 @@ import { useDataWedgeInterop } from '../DataWedgeInterop';
 
 
 export default function ConfigScreen()  {
-
-
   const [ean8checked, setean8checked] = useState(true);
   const [ean13checked, setean13checked] = useState(true);
   const [code39checked, setcode39checked] = useState(true);
@@ -37,13 +35,15 @@ export default function ConfigScreen()  {
     };
 
     const [dwInterop, dispatchDWRequest] = useDataWedgeInterop(config);
-    const [dataWedgeState, dispatchDWConfig] = useDataWedgeConfig(config, dispatchDWRequest);
-  
+    const [configState, dispatchDWConfig] = useDataWedgeConfig(config, dispatchDWRequest);
+    
   const someData = useEffect(() =>
     {
+        console.log("In ConfigScreen");
+        console.log(configState);
         dispatchDWConfig({type: "Initialize"});
     }
-  );
+    , [configState]);
 
   const _onPressScanButton:any = () => dispatchDWRequest({ type: 'ToggleScan'});
 
@@ -101,12 +101,6 @@ const setDecoders = () => {
       }
   };
 }
-  const [hasCurrentVersion, sethasCurrentVersion] = useState(false);
-  if (hasCurrentVersion == false)
-  {
-    //determineVersion();
-    sethasCurrentVersion(true);
-  }
   
     return (
       
@@ -115,9 +109,9 @@ const setDecoders = () => {
         <Text style={styles.h1}>Zebra ReactNative DataWedge Demo</Text>
         <Text style={styles.h3}>Information / Configuration</Text>
         <Text style={styles.itemHeading}>DataWedge version:</Text>
-        <Text style={dwVersionTextStyle}>{dwVersionText}</Text>
+        <Text style={dwVersionTextStyle}>{configState.version}</Text>
         <Text style={styles.itemHeading}>Active Profile</Text>
-        <Text style={styles.itemText}>{activeProfileText}</Text>
+        <Text style={styles.itemText}>{configState.activeProfileName}</Text>
         { lastApiVisible && 
           <Text style={styles.itemHeading}>Last API message</Text>
         }

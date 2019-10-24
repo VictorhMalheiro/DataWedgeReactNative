@@ -1,8 +1,8 @@
 import { useConsoleLogging } from "./Logging";
-import { useState, useReducer, useEffect, useRef } from "react";
+import { useState, useReducer, useEffect, useRef, MutableRefObject, Reducer, Dispatch } from "react";
 import DataWedgeIntents from 'react-native-datawedge-intents';
 import { NativeEventEmitter } from "react-native";
-import { useDataWedgeInterop, DataWedgeResult, DWVersion, ActiveProfile, EnumerateScanners } from "./DataWedgeInterop";
+import { useDataWedgeInterop, DataWedgeResult, DWVersion, ActiveProfile, EnumerateScanners, ResultInfo } from "./DataWedgeInterop";
 
 type DataWedgeConfig = {
   appNamespace: string,
@@ -18,6 +18,10 @@ type DataWedgeState = {
 
 type ConfigAction = {
   type: "Initialize",
+} |
+{
+    type: "UpdateState",
+    newState: DataWedgeState
 }
 
 function sleep(ms:number) {
@@ -63,6 +67,7 @@ const awaitEventReceived = async (eventType: string, callback:any, timeoutMs: nu
 
 const scanHandler = (scanData: DataWedgeResult) => {
     if (scanData == null) { return; }
+    console.log(scanData);
     if (eventDelegates[scanData.type] !== undefined && eventDelegates[scanData.type] !== null)
     {
         eventDelegates[scanData.type](scanData);
@@ -73,7 +78,18 @@ const scanHandler = (scanData: DataWedgeResult) => {
 
 export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: any)
 {
+  const dwLocalState = useRef<DataWedgeState>(
+    {
+    version: "",
+    availableScanners: [],
+    lastCommand: null,
+    lastScan: null, // TODO: make this a data type
+    activeProfileName: null
+  });
+  
+
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [dwGlobalState, reducer] = useReducer(eventReducer, dwLocalState.current);
   // TODO: use IoC to resolve the logging type we want to use.
   const log = useConsoleLogging();
 
@@ -81,11 +97,11 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
     await dispatchDWRequest({type: "RegisterScanHandler", handler: scanHandler});
     await determineVersion();
     // TODO: call these based on actual version returned.
-    if (dwState.current.version >= "6.3.0")
+    if (dwLocalState.current.version >= "6.3.0")
     {
         await datawedge63();
     }
-    if (dwState.current.version >= "6.4.0")
+    if (dwLocalState.current.version >= "6.4.0")
     {
         await datawedge64();
     }
@@ -99,13 +115,16 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
     //log({logLevel: 'trace', message: "DWReducer - Action: ", additionalParams: [action]});
     switch (action.type)
     {
-      case "Initialize":
-        if (!hasInitialized)
-        {
-            setHasInitialized(true);
-            initialize();
-        }
-        break;
+        case "Initialize":
+            if (!hasInitialized)
+            {
+                setHasInitialized(true);
+                initialize();
+            }
+            break;
+        case "UpdateState":
+            return action.newState;
+            break;
     }
     //log({logLevel: 'trace', message: "DWReducer - New state: ", additionalParams: [state]});
     return state;
@@ -118,20 +137,12 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
   //const [sendCommandResult, setsendCommandResult] = useState("false");
   // TODO: set send command result based on DW version.
   const [sendCommandResult, setsendCommandResult] = useState("true");
-  const dwState = useRef(
-    {
-    version: "",
-    availableScanners: [],
-    lastCommand: null,
-    lastScan: null, // TODO: make this a data type
-    activeProfileName: null
-
-  });
 
   const determineVersion:any = async () => 
   {
     let watcher:any = awaitEventReceived("DWVersion", (scanData: DWVersion) => {
-        dwState.current = {...dwState.current, version: scanData.version }
+        dwLocalState.current = {...dwLocalState.current, version: scanData.version };
+        reducer({type: "UpdateState", newState: dwLocalState.current});
     }, 5000);
     dispatchDWRequest({ type: "GetVersion" });
     await watcher;
@@ -144,7 +155,8 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
 
     //  Although we created the profile we can only configure it with DW 6.4.
     let watcher:any = awaitEventReceived("ActiveProfile", (scanData: ActiveProfile) => {
-        dwState.current = {...dwState.current, activeProfileName: scanData.profile }
+        dwLocalState.current = {...dwLocalState.current, activeProfileName: scanData.profile };
+        reducer({type: "UpdateState", newState: dwLocalState.current});
     }, 5000);
 
     await dispatchDWRequest({ type: "GetActiveProfile" });
@@ -153,14 +165,15 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
     //  Enumerate the available scanners on the device
     
     watcher = awaitEventReceived("EnumerateScanners", (scanData: EnumerateScanners) => {
-        dwState.current = {...dwState.current, availableScanners: scanData.scanners }
+        dwLocalState.current = {...dwLocalState.current, availableScanners: scanData.scanners };
+        reducer({type: "UpdateState", newState: dwLocalState.current});
     }, 5000);
 
     await dispatchDWRequest({type: "EnumerateScanners"});
     await watcher;
   }
 
-  const datawedge64:any = () =>
+  const datawedge64:any = async () =>
   {
     console.log("Datawedge 6.4 APIs are available");
 
@@ -179,8 +192,14 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
             "ACTIVITY_LIST": ["*"]
         }]
     };
-    dispatchDWRequest({ type: "UpdateProfile", profile: profileConfig });
 
+    
+    let watcher: any = awaitEventReceived("ResultInfo", (scanData: ResultInfo) => {
+        console.log(scanData);
+        //dwLocalState.current = {...dwLocalState.current, availableScanners: scanData.scanners }
+    }, 5000);
+    await dispatchDWRequest({ type: "UpdateProfile", profile: profileConfig });
+    await watcher;
     //  Configure the created profile (intent plugin)
     var profileConfig2 = {
         "PROFILE_NAME": config.profileName,
@@ -196,15 +215,24 @@ export function useDataWedgeConfig(config: DataWedgeConfig, dispatchDWRequest: a
             }
         }
     };
-    dispatchDWRequest({ type: "UpdateProfile", profile: profileConfig2});
-
-    //  Give some time for the profile to settle then query its value
-    setTimeout(() => {
-        dispatchDWRequest({ type: "GetActiveProfile"});
-    }, 1000);
+    
+    watcher = awaitEventReceived("ResultInfo", (scanData: ResultInfo) => {
+        console.log(scanData);
+        //dwLocalState.current = {...dwLocalState.current, availableScanners: scanData.scanners }
+    }, 5000);
+    await dispatchDWRequest({ type: "UpdateProfile", profile: profileConfig2});
+    await watcher;
+    
+    watcher = awaitEventReceived("ActiveProfile", (scanData: ActiveProfile) => {
+        console.log(scanData);
+        dwLocalState.current = {...dwLocalState.current, activeProfileName: scanData.profile };
+        reducer({type: "UpdateState", newState: dwLocalState.current});
+        
+    }, 5000);
+    await dispatchDWRequest({ type: "GetActiveProfile"});
+    await watcher;
   }
 
-
-
-  return useReducer(eventReducer, dwState.current);
+  let retVal: [DataWedgeState, Dispatch<ConfigAction>] = [dwGlobalState, reducer];
+  return retVal;
 }
